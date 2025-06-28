@@ -144,6 +144,9 @@ ENV/
 env.bak/
 venv.bak/
 
+# local files
+designing_models_and_entities_for_web_applications.pdf
+
 # Spyder project settings
 .spyderproject
 .spyproject
