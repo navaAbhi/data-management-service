@@ -19,5 +19,5 @@ class File(Base):
                          default=lambda: datetime.now(timezone.utc))
 
     import_job = relationship("ImportJob", back_populates="files")
-    metadata = relationship("Metadata", uselist=False,
+    file_metadata = relationship("FileMetadata", uselist=False,
                             back_populates="file", cascade="all, delete")
