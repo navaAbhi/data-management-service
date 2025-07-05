@@ -8,6 +8,62 @@ router = APIRouter(
     tags=["core"],
 )
 
-@router.post("/import/local/presigned-url")
+
+@router.get("/{job_id}")
+async def get_import_job_status(job_id: str, response: Response, user=Depends(get_current_user)):
+    """
+    Retrieves the current status and progress of a specific import job.
+    """
+    return None
+
+
+@router.get("")
+async def list_import_jobs(response: Response, user=Depends(get_current_user)):
+    """
+    Lists recent import jobs initiated by the current user, with pagination.
+    """
+    return None
+
+
+@router.post("/local/presigned-url")
 async def upload_local_large_file(request: FileLocalPreesignedRequest, response: Response, user=Depends(get_current_user)):
-    return
+    """Generates a presigned URL for uploading a large local file directly to S3."""
+    return None
+
+
+@router.post("/local/complete")
+async def complete_upload(response: Response, user=Depends(get_current_user)):
+    """Marks the local file upload as complete and stores metadata."""
+    return None
+
+
+@router.post("/cloud")
+async def cloud_upload(response: Response, user=Depends(get_current_user)):
+    """Initiates an import from a connected cloud storage provider (like GDrive or Dropbox)."""
+    return None
+
+
+@router.post("/cloud/complete")
+async def complete_cloud_upload(response: Response, user=Depends(get_current_user)):
+    """Finalizes the cloud import process and stores metadata."""
+    return None
+
+
+@router.post("/link")
+async def link_upload(response: Response, user=Depends(get_current_user)):
+    """Accepts a direct file URL to import from (via HTTP link)."""
+    return None
+
+
+@router.post("/link/complete")
+async def complete_link_upload(response: Response, user=Depends(get_current_user)):
+    """Marks the link-based import as complete and stores metadata."""
+    return None
+
+
+@router.post("/metadata")
+async def store_import_metadata(response: Response, user=Depends(get_current_user)):
+    """
+    Stores metadata for the uploaded data by the user.
+    """
+    return None
