@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from fastapi import HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,20 +21,54 @@ class AuthService:
 
         # Find matching fake token
         # string casting because user.name is a Column in model but after fetching from db it is string so explicitly casting is better
-        token = FAKE_USER_TOKENS.get(str(user.name))
+        token_data = FAKE_USER_TOKENS.get(str(user.name))
 
-        if not token:
+        if not token_data:
             raise HTTPException(
                 500, detail="No fake token mapped for this user")
 
         self.response.set_cookie(
             key="Authorization",
-            value=token,
+            value=token_data["token"],
+            max_age=60,
             httponly=True,
             secure=False
         )
         return {"message": "Logged in successfully"}
 
+    async def verify_access_token_service(self, request):
+        """Verify the user's access token from the request cookie."""
+        token = self.get_token_from_cookie(request)
+
+        if not token:
+            await self.logout_user_service()
+            raise HTTPException(
+                status_code=401, detail="Missing or expired token. Logged out.")
+
+        user = self.get_user_from_token(token)
+
+        if not user:
+            await self.logout_user_service()
+            raise HTTPException(
+                status_code=401, detail="Invalid or expired token. Logged out.")
+
+        return {"status": "valid token", "user": user}
+
+    def get_token_from_cookie(self, request):
+        """Validate the token against the FAKE_USER_TOKENS store and check expiration."""
+        return request.cookies.get("Authorization")
+
+    def get_user_from_token(self, token):
+        """Validate the token against the FAKE_USER_TOKENS store and check expiration."""
+        for username, data in FAKE_USER_TOKENS.items():
+            if data["token"] == token:
+                if datetime.now(timezone.utc) < data["expires_at"]:
+                    return username
+                else:
+                    return None
+        return None
+
     async def logout_user_service(self):
+        """Logout user by deleting the Authorization cookie in the header"""
         self.response.delete_cookie("Authorization")
         return {"message": "Logged out successfully"}

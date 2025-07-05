@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from src.core.config import DATABASE_URI
 
+"""Register SQLAlchemy models into the engine"""
 import src.models.user
 import src.models.credential
 import src.models.import_job
