@@ -1,6 +1,10 @@
 from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.schemas.request.local_presigned import FileLocalPreesignedRequest
+from src.core.db import get_db
+from src.schemas.request.local_presigned import FileLocalPresignedRequest
+from src.schemas.request.local_upload_complete import LocalUploadCompleteRequest
+from src.services.import_service import ImportService
 from src.utils.get_current_user import get_current_user
 
 router = APIRouter(
@@ -11,30 +15,41 @@ router = APIRouter(
 
 @router.get("/{job_id}")
 async def get_import_job_status(job_id: str, response: Response, user=Depends(get_current_user)):
-    """
-    Retrieves the current status and progress of a specific import job.
-    """
+    """Retrieves the current status and progress of a specific import job."""
     return None
 
 
 @router.get("")
 async def list_import_jobs(response: Response, user=Depends(get_current_user)):
-    """
-    Lists recent import jobs initiated by the current user, with pagination.
-    """
+    """Lists recent import jobs initiated by the current user, with pagination."""
     return None
 
 
 @router.post("/local/presigned-url")
-async def upload_local_large_file(request: FileLocalPreesignedRequest, response: Response, user=Depends(get_current_user)):
+async def upload_local_large_file(request: FileLocalPresignedRequest, response: Response, db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
     """Generates a presigned URL for uploading a large local file directly to S3."""
-    return None
+    service = ImportService(db)
+    presigned_data = await service.generate_presigned_post(
+        filename=request.filename,
+        content_type=request.content_type,
+        size=request.size,
+        user_id=user.id
+    )
+    return {"presigned": presigned_data}
 
 
 @router.post("/local/complete")
-async def complete_upload(response: Response, user=Depends(get_current_user)):
+async def complete_upload(request: LocalUploadCompleteRequest, response: Response, db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
     """Marks the local file upload as complete and stores metadata."""
-    return None
+    service = ImportService(db)
+    job = await service.complete_local_upload(
+        user_id=user.id,
+        data=request.dict()
+    )
+    return {
+        "job_id": str(job.id),
+        "status": job.status
+    }
 
 
 @router.post("/cloud")

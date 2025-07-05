@@ -1,0 +1,3 @@
+SERVICE_FILES_BUCKET_REGION = "ap-south-1"
+SERVICE_FILES_BUCKET_NAME = "data-management-bucket-test-joe"
+PRESIGNED_URL_EXPIRY_SECONDS = 3600
