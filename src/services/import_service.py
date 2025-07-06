@@ -34,11 +34,14 @@ class ImportService:
             user_id=user_id,
             status="COMPLETED",
             source_type="local",
-            source_path=data["original_filename"],
-            destination_path=data["s3_key"],
+            source_details={
+                "original_filename": data["original_filename"],
+                "s3_key": data["s3_key"]
+            },
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc)
         )
+
         await self.import_repository.insert_import_job(import_job, self.db)
 
         # create File tied to ImportJob
