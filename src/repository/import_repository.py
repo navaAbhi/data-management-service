@@ -27,3 +27,10 @@ class ImportRepository:
     async def get_import_job_by_id(job_id: UUID, session: AsyncSession) -> ImportJob | None:
         result = await session.execute(select(ImportJob).where(ImportJob.id == job_id))
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def update_import_job(job: ImportJob, session: AsyncSession) -> ImportJob:
+        session.add(job)
+        await session.commit()
+        await session.refresh(job)
+        return job

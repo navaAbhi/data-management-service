@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.db import get_db
+from src.schemas.request.link_upload import LinkUploadRequest
+from src.schemas.request.link_upload_complete import LinkUploadCompleteRequest
 from src.schemas.request.local_presigned import FileLocalPresignedRequest
 from src.schemas.request.local_upload_complete import LocalUploadCompleteRequest
 from src.services.import_service import ImportService
@@ -65,20 +67,35 @@ async def complete_cloud_upload(response: Response, user=Depends(get_current_use
 
 
 @router.post("/link")
-async def link_upload(response: Response, user=Depends(get_current_user)):
-    """Accepts a direct file URL to import from (via HTTP link)."""
-    return None
+async def link_upload(request_data: LinkUploadRequest, response: Response, db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
+    """Accepts a direct file URL to import from (via HTTP or S3 link)."""
+    service = ImportService(db)
+    job = await service.start_link_import(
+        user_id=user.id,
+        source_url=request_data.source_url,
+        destination_path=request_data.destination_path
+    )
+    return {
+        "job_id": str(job.id),
+        "status": job.status
+    }
 
 
 @router.post("/link/complete")
-async def complete_link_upload(response: Response, user=Depends(get_current_user)):
+async def complete_link_upload(request_data: LinkUploadCompleteRequest, response: Response, db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
     """Marks the link-based import as complete and stores metadata."""
-    return None
+    service = ImportService(db)
+    job = await service.complete_link_upload(
+        user_id=user.id,
+        data=request_data.dict()
+    )
+    return {
+        "job_id": str(job.id),
+        "status": job.status
+    }
 
 
 @router.post("/metadata")
 async def store_import_metadata(response: Response, user=Depends(get_current_user)):
-    """
-    Stores metadata for the uploaded data by the user.
-    """
+    """Stores metadata for the uploaded data by the user."""
     return None
