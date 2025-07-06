@@ -11,7 +11,7 @@ from src.utils.get_current_user import get_current_user
 
 router = APIRouter(
     prefix="/import",
-    tags=["core"],
+    tags=["imports"],
 )
 
 
