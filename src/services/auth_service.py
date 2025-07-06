@@ -30,8 +30,9 @@ class AuthService:
         self.response.set_cookie(
             key="Authorization",
             value=token_data["token"],
-            max_age=60,
+            max_age=60*60,
             httponly=True,
+            # samesite="lax",
             secure=False
         )
         return {"message": "Logged in successfully"}

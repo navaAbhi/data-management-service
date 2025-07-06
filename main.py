@@ -32,7 +32,8 @@ class AppCreator:
         if BACKEND_CORS_ORIGINS:
             self.app.add_middleware(
                 CORSMiddleware,
-                allow_origins=BACKEND_CORS_ORIGINS,  # type: ignore
+                # allow_origins=BACKEND_CORS_ORIGINS,  # type: ignore
+                allow_origins=["http://localhost:3000"],
                 allow_credentials=True,
                 allow_methods=["*"],
                 allow_headers=["*"],
@@ -51,9 +52,9 @@ class AppCreator:
             except Exception as e:
                 return {"status": "PostgreSQL connection failed", "error": str(e)}
 
+        self.app.include_router(auth_router)
         self.app.include_router(import_router)
         self.app.include_router(datasources_router)
-        self.app.include_router(auth_router)
 
 
 app_creator = AppCreator()
