@@ -20,4 +20,4 @@ class File(Base):
 
     import_job = relationship("ImportJob", back_populates="files")
     file_metadata = relationship("FileMetadata", uselist=False,
-                            back_populates="file", cascade="all, delete")
+                                 back_populates="file", cascade="all, delete")

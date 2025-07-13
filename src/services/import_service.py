@@ -7,6 +7,7 @@ from src.enum.status_enum import ImportJobStatus
 from src.models.file import File
 from src.models.import_job import ImportJob
 from src.repository.import_repository import ImportRepository
+from src.tasks import copy_from_s3_link, process_local_upload
 from src.utils.aws_util import AwsUtil
 from src.utils.constants import PRESIGNED_URL_EXPIRY_SECONDS, SERVICE_FILES_BUCKET_NAME
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,11 +33,12 @@ class ImportService:
         return {"presigned_post": presigned_post, "s3_key": s3_key}
 
     async def complete_local_upload(self, user_id, data: dict):
-        # create ImportJob
+        # Create job as QUEUED
         import_job = ImportJob(
             id=uuid.uuid4(),
             user_id=user_id,
-            status=ImportJobStatus.COMPLETED,
+            status=ImportJobStatus.QUEUED,
+            progress_percentage=0,
             source_type=SourceType.LOCAL,
             source_details={
                 "original_filename": data["original_filename"],
@@ -48,36 +50,30 @@ class ImportService:
 
         await self.import_repository.insert_import_job(import_job, self.db)
 
-        # create File tied to ImportJob
-        file = File(
-            id=uuid.uuid4(),
-            import_job_id=import_job.id,
-            original_filename=data["original_filename"],
-            s3_key=data["s3_key"],
-            size=data["size"],
-            uploaded_at=datetime.now(timezone.utc)
+        # Enqueue celery task to process uploaded file
+        process_local_upload.delay(  # type: ignore
+            str(import_job.id),
+            data["s3_key"],
+            data["original_filename"],
+            data["size"]
         )
-        await self.import_repository.insert_file(file, self.db)
 
         return import_job
 
-    async def start_link_import(self, user_id, source_url, destination_path):
+    async def start_link_import(self, user_id, source_url):
         import_job = ImportJob(
             id=uuid.uuid4(),
             user_id=user_id,
-            status=ImportJobStatus.QUEUED,  # queued for processing
+            status=ImportJobStatus.QUEUED,
             source_type=SourceType.LINK,
-            source_details={
-                "source_url": source_url,
-                "destination_path": destination_path
-            },
+            source_details={"source_url": source_url},
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc)
         )
         await self.import_repository.insert_import_job(import_job, self.db)
 
-        # TODO: Enqueue a Celery task here to actually copy the file from S3 link
-        # e.g. copy_s3_object.delay(source_url, destination_path, user_id, import_job.id)
+        # enqueue celery task
+        copy_from_s3_link.delay(str(import_job.id), source_url)  # type: ignore
 
         return import_job
 
@@ -87,8 +83,9 @@ class ImportService:
         if not job or job.user_id != user_id:
             raise HTTPException(status_code=404, detail="Import job not found")
 
-        job.status = ImportJobStatus.COMPLETED  # pylance issue, not runtime error
-        job.updated_at = datetime.now(timezone.utc)
+        # pylance issue, not runtime error
+        job.status = ImportJobStatus.COMPLETED  # type: ignore
+        job.updated_at = datetime.now(timezone.utc)  # type: ignore
         await self.import_repository.update_import_job(job, self.db)
 
         # add File entry
@@ -103,3 +100,29 @@ class ImportService:
         await self.import_repository.insert_file(file, self.db)
 
         return job
+
+    async def get_import_job_status(self, job_id, user_id):
+        job = await self.import_repository.get_import_job_by_id(job_id, self.db)
+        if not job or job.user_id != user_id:
+            raise HTTPException(status_code=404, detail="Import job not found")
+
+        try:
+            status = ImportJobStatus(job.status).value
+        except ValueError:
+            status = ImportJobStatus.IN_PROGRESS.value
+
+        files_processed = len(job.files) if job.files else 0
+        total_files = getattr(job, "total_files", files_processed)
+
+        return {
+            "job_id": str(job.id),
+            "status": status,
+            "progress_percentage": job.progress_percentage or 0,
+            "details": {
+                "files_processed": files_processed,
+                "total_files": total_files,
+                "error_message": None
+            },
+            "created_at": job.created_at.isoformat() if isinstance(job.created_at, datetime) else None,
+            "updated_at": job.updated_at.isoformat() if isinstance(job.updated_at, datetime) else None
+        }

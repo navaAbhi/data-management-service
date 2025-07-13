@@ -2,6 +2,7 @@ from enum import Enum
 
 
 class ImportJobStatus(str, Enum):
-    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
     QUEUED = "QUEUED"
     COMPLETED = "COMPLETED"
+    FAILED = "FAILED"

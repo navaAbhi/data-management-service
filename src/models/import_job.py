@@ -14,7 +14,7 @@ class ImportJob(Base):
         "users.id"), nullable=False)
     source_type = Column(String, nullable=False)
     source_details = Column(JSON, nullable=True)
-    status = Column(String, default="PENDING")
+    status = Column(String, default="QUEUED")
     progress_percentage = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True),
                         default=lambda: datetime.now(timezone.utc))
